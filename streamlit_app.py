@@ -76,10 +76,14 @@ def admin_panel(conn):
 
     if st.button('Add Product'):
         if item_name and price and image:
-            image_path = f'images/{image.name}'
+            images_dir = Path('images')
+            if not images_dir.exists():
+                images_dir.mkdir(parents=True)
+                
+            image_path = images_dir / image.name
             with open(image_path, 'wb') as f:
                 f.write(image.getbuffer())
-            add_product(conn, item_name, price, image_path)
+            add_product(conn, item_name, price, str(image_path))
             st.success('Product added successfully!')
         else:
             st.error('Please fill in all fields and upload an image.')
