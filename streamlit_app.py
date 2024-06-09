@@ -1,8 +1,8 @@
 import sqlite3
 from pathlib import Path
-
 import streamlit as st
 import pandas as pd
+import os
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -31,16 +31,9 @@ def initialize_data(conn):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             item_name TEXT,
             price REAL,
+            image_path TEXT,
             purchased INTEGER DEFAULT 0
         )
-        '''
-    )
-
-    cursor.execute(
-        '''
-        INSERT INTO wedding_gifts (item_name, price, purchased) VALUES
-        ('Breakfast in Hotel', 25.0, 0),
-        ('Night in Hotel', 75.0, 0)
         '''
     )
     conn.commit()
@@ -51,7 +44,7 @@ def load_data(conn):
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM wedding_gifts')
     data = cursor.fetchall()
-    df = pd.DataFrame(data, columns=['id', 'item_name', 'price', 'purchased'])
+    df = pd.DataFrame(data, columns=['id', 'item_name', 'price', 'image_path', 'purchased'])
     return df
 
 
@@ -62,6 +55,57 @@ def mark_as_purchased(conn, item_id):
     conn.commit()
 
 
+def add_product(conn, item_name, price, image_path):
+    '''Adds a new product to the database.'''
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO wedding_gifts (item_name, price, image_path, purchased) VALUES (?, ?, ?, 0)',
+        (item_name, price, image_path)
+    )
+    conn.commit()
+
+
+def admin_panel(conn):
+    '''Displays the admin panel for managing products.'''
+    st.title('Admin Panel')
+
+    st.header('Add New Product')
+    item_name = st.text_input('Item Name')
+    price = st.number_input('Price', min_value=0.0, format="%.2f")
+    image = st.file_uploader('Upload Image', type=['jpg', 'jpeg', 'png'])
+
+    if st.button('Add Product'):
+        if item_name and price and image:
+            image_path = f'images/{image.name}'
+            with open(image_path, 'wb') as f:
+                f.write(image.getbuffer())
+            add_product(conn, item_name, price, image_path)
+            st.success('Product added successfully!')
+        else:
+            st.error('Please fill in all fields and upload an image.')
+
+    st.header('Existing Products')
+    df = load_data(conn)
+    st.write(df)
+
+
+def shop_page(conn):
+    '''Displays the shopping page.'''
+    st.title('Wedding Gift Shop')
+    st.write('Select a gift to purchase for the wedding.')
+
+    df = load_data(conn)
+
+    for index, row in df.iterrows():
+        if row['purchased']:
+            st.write(f"~~{row['item_name']} - €{row['price']} (Purchased)~~")
+        else:
+            st.image(row['image_path'], width=100)
+            if st.button(f"Buy {row['item_name']} for €{row['price']}", key=row['id']):
+                mark_as_purchased(conn, row['id'])
+                st.rerun()
+
+
 # Connect to database and create table if needed
 conn, db_was_just_created = connect_db()
 
@@ -70,19 +114,8 @@ if db_was_just_created:
     initialize_data(conn)
     st.toast('Database initialized with some sample data.')
 
-# Load data from database
-df = load_data(conn)
-
-# Display the wedding gifts
-st.title('Wedding Gift Shop')
-st.write('Select a gift to purchase for the wedding.')
-
-for index, row in df.iterrows():
-    if row['purchased']:
-        st.write(f"~~{row['item_name']} - €{row['price']} (Purchased)~~")
-    else:
-        if st.button(f"Buy {row['item_name']} for €{row['price']}", key=row['id']):
-            mark_as_purchased(conn, row['id'])
-            st.experimental_rerun()
-
-st.write("Refresh the page to see updates.")
+# Routing workaround
+if 'admin' in st.query_params:
+    admin_panel(conn)
+else:
+    shop_page(conn)
