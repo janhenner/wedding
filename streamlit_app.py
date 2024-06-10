@@ -94,6 +94,18 @@ def admin_panel(conn):
     st.write(df)
 
 
+background_image = """
+<style>
+[data-testid="stAppViewContainer"] > .main {
+    background-image: url("paja.png");
+    background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
+    background-position: center;  
+    background-repeat: no-repeat;
+}
+</style>
+"""
+st.markdown(background_image, unsafe_allow_html=True)
+
 def shop_page(conn):
     '''Displays the shopping page.'''
     st.write('Select a gift to purchase for the wedding.')
@@ -102,12 +114,29 @@ def shop_page(conn):
 
     for index, row in df.iterrows():
         if row['purchased']:
-            st.write(f"~~{row['item_name']} - €{row['price']} (Purchased)~~")
+            st.write(":grey-background[already purchased:]")
+            st.image(
+                row['image_path'],
+                width=250,
+                caption=f"{row['item_name']} (€{row['price']})"
+            )
+
         else:
-            st.image(row['image_path'], width=100)
-            if st.button(f"Buy {row['item_name']} for €{row['price']}", key=row['id']):
-                mark_as_purchased(conn, row['id'])
-                st.rerun()
+            with st.container(border=True):
+                st.image(
+                    row['image_path'],
+                    caption=row['item_name'],
+                    use_column_width=True
+                )
+                with st.popover('Buy this item for Pauline and Jan'):
+                    name = st.text_input("Magst Du ergänzen wer Du bist?")
+                    message = st.text_area("Möchtest Du eine Nachricht hinzufügen?")
+                    if st.button(f"Buy {row['item_name']} for €{row['price']}", key=row['id'], type='primary'):
+                        mark_as_purchased(conn, row['id'])
+                        @st.experimental_dialog("Überweisung")
+                        def info_ueberweisung():
+                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+                        st.rerun()
 
 
 def check_password():
@@ -133,7 +162,7 @@ def check_password():
         st.error("😕 Password incorrect")
     return False
 
-st.title('💒 Hochzeitsshop Vorjohann', anchor=False)
+st.title('💒 Hochzeitsgeschenke Vorjohann', anchor=False)
 
 if not check_password():
     st.stop()  # Do not continue if check_password is not True.
@@ -148,7 +177,7 @@ if db_was_just_created:
     st.toast('Database initialized with some sample data.')
 
 # Routing workaround
-if 'admin' in st.query_params:
+if 'secretadmin' in st.query_params:
     admin_panel(conn)
 else:
     shop_page(conn)
