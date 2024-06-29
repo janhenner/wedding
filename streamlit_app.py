@@ -133,10 +133,14 @@ def shop_page():
 
     st.markdown("""
     <style>
-    [data-testid="stImage"] {
-        border: 2px solid #f0f0f0;
-        border-radius: 10px;
-        padding: 5px;
+    .logo-image {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    .logo-image img {
+        width: 100%;
+        height: auto;
+        display: block;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -147,54 +151,63 @@ def shop_page():
     with logo_container:
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
-            st.image('paja.png', width=300)  # Adjust width as needed
+            st.markdown('<div class="logo-image"><img src="paja.png" alt="Logo"></div>', unsafe_allow_html=True)
 
     # Add some space after the logo
     st.markdown("<br>", unsafe_allow_html=True)
 
     df = load_data()
 
-    st.subheader("Schon geschenkt", divider='blue')
-    purchased_items = df[df['purchased'] == True]
-    cols = st.columns(3)
-    for i, (_, row) in enumerate(purchased_items.iterrows()):
-        with cols[i % 3]:
-            image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-            st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
-    
-    if len(purchased_items) > 6:
-        if st.button("Show more purchased items"):
-            for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
+    if df.empty:
+        st.info("Noch keine Einträge")
+    else:
+        st.subheader("Das wurde schon geschenkt", divider='blue')
+        purchased_items = df[df['purchased'] == True]
+        if purchased_items.empty:
+            st.write("Sei der erste, der ein Geschenk auswählt.")
+        else:
+            cols = st.columns(3)
+            for i, (_, row) in enumerate(purchased_items.iterrows()):
                 with cols[i % 3]:
                     image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                     st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
+        
+            if len(purchased_items) > 6:
+                if st.button("Show more purchased items"):
+                    for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
+                        with cols[i % 3]:
+                            image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                            st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
 
-    st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
-    available_items = df[df['purchased'] == False]
-    cols = st.columns(3)
-    for i, (_, row) in enumerate(available_items.iterrows()):
-        with cols[i % 3]:
-            with st.container(border=True):
-                image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                st.image(image, caption=row['item_name'], use_column_width=True)
-                
-                if f"purchased_{row['id']}" not in st.session_state:
-                    st.session_state[f"purchased_{row['id']}"] = False
-                
-                if not st.session_state[f"purchased_{row['id']}"]:
-                    name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
-                    message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
-                    if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
-                        mark_as_purchased(row['id'], name, message)
-                        st.session_state[f"purchased_{row['id']}"] = True
-                        st.rerun()
-                else:
-                    st.success("Item purchased successfully!")
-                    st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
-                    st.code(f"DE123", language="text")
-                    if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
-                        st.session_state[f"purchased_{row['id']}"] = False
-                        st.rerun()
+        st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
+        available_items = df[df['purchased'] == False]
+        if available_items.empty:
+            st.write("All items have been purchased. Thank you for your generosity!")
+        else:
+            cols = st.columns(3)
+            for i, (_, row) in enumerate(available_items.iterrows()):
+                with cols[i % 3]:
+                    with st.container(border=True):
+                        image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                        st.image(image, caption=row['item_name'], use_column_width=True)
+                        
+                        if f"purchased_{row['id']}" not in st.session_state:
+                            st.session_state[f"purchased_{row['id']}"] = False
+                        
+                        if not st.session_state[f"purchased_{row['id']}"]:
+                            name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
+                            message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
+                            if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
+                                mark_as_purchased(row['id'], name, message)
+                                st.session_state[f"purchased_{row['id']}"] = True
+                                st.rerun()
+                        else:
+                            st.success("Item purchased successfully!")
+                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+                            st.code(f"DE123", language="text")
+                            if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
+                                st.session_state[f"purchased_{row['id']}"] = False
+                                st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
