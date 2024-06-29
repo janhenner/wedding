@@ -11,6 +11,7 @@ import hmac
 st.set_page_config(
     page_title='Wedding Gift Shop',
     page_icon=':shopping_bags:',
+    layout='wide'
 )
 
 # Initialize the DynamoDB resource using credentials from secrets
@@ -103,21 +104,33 @@ def shop_page():
 
     df = load_data()
 
+    col1, col2 = st.columns(2) 
+
     @st.experimental_dialog("Überweisung")
     def info_ueberweisung():
         st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
 
+    # Initialize flags to track whether sections have been shown
+    schon_geschenkt_shown = False
+    geschenketisch_shown = False
+
     for index, row in df.iterrows():
         if row['purchased']:
-            st.subheader(":grey-background[Schon geschenkt:]", divider='blue')
+            if not schon_geschenkt_shown:
+                st.subheader("Schon geschenkt", divider='blue')
+                schon_geschenkt_shown = True
+            
             st.image(
                 row['image_path'],
-                width=250,
+                width=200,
                 caption=f"{row['item_name']} (€{row['price']})"
             )
 
         else:
-            st.subheader(":grey-background[Geschenketisch:]", divider='rainbow')
+            if not geschenketisch_shown:
+                st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
+                geschenketisch_shown = True
+            
             with st.container(border=True):
                 st.image(
                     row['image_path'],
@@ -128,7 +141,6 @@ def shop_page():
                     name = st.text_input("Magst Du ergänzen wer Du bist?")
                     message = st.text_area("Möchtest Du eine Nachricht hinzufügen?")
                     if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
-
                         mark_as_purchased(row['id'])
                         info_ueberweisung()
                         st.rerun()
