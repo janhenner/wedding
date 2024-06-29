@@ -128,21 +128,29 @@ def admin_panel():
                 st.success('Product updated successfully!')
                 st.rerun()
 
-background_image = """
-<style>
-[data-testid="stAppViewContainer"] > .main {
-    background-image: url("paja.png");
-    background-size: 100vw 100vh;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-</style>
-"""
-st.markdown(background_image, unsafe_allow_html=True)
-
 def shop_page():
     '''Displays the shopping page.'''
-    st.image('paja.png', width=400)
+
+    st.markdown("""
+    <style>
+    [data-testid="stImage"] {
+        border: 2px solid #f0f0f0;
+        border-radius: 10px;
+        padding: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Create a container for the logo
+    logo_container = st.container()
+
+    with logo_container:
+        col1, col2, col3 = st.columns([1,2,1])
+        with col2:
+            st.image('paja.png', width=300)  # Adjust width as needed
+
+    # Add some space after the logo
+    st.markdown("<br>", unsafe_allow_html=True)
 
     df = load_data()
 
@@ -169,16 +177,24 @@ def shop_page():
             with st.container(border=True):
                 image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                 st.image(image, caption=row['item_name'], use_column_width=True)
-                with st.popover('Buy this item for Pauline and Jan'):
+                
+                if f"purchased_{row['id']}" not in st.session_state:
+                    st.session_state[f"purchased_{row['id']}"] = False
+                
+                if not st.session_state[f"purchased_{row['id']}"]:
                     name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
                     message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
                     if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
                         mark_as_purchased(row['id'], name, message)
-                        st.success("Item purchased successfully!")
-                        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
-                        st.code(f"DE123", language="text")
-                        if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
-                            st.rerun()
+                        st.session_state[f"purchased_{row['id']}"] = True
+                        st.rerun()
+                else:
+                    st.success("Item purchased successfully!")
+                    st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+                    st.code(f"DE123", language="text")
+                    if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
+                        st.session_state[f"purchased_{row['id']}"] = False
+                        st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
