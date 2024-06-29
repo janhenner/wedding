@@ -149,7 +149,7 @@ def check_password(password_key):
 st.title('💒 Hochzeitsgeschenke Vorjohann', anchor=False)
 
 # Check if 'secretadmin' parameter is in query params
-if 'secretadmin' in st.query_params():
+if 'secretadmin' in st.query_params:
     # Check admin password for admin panel access
     if not check_password("password_admin"):
         st.stop()
