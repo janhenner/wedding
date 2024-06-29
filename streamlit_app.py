@@ -100,7 +100,7 @@ st.markdown(background_image, unsafe_allow_html=True)
 
 def shop_page():
     '''Displays the shopping page.'''
-    st.write('Select a gift to purchase for the wedding.')
+    st.image('/static/paja.png', width=400)
 
     df = load_data()
 
@@ -162,7 +162,7 @@ def check_password(password_key):
 
     # Show input for password.
     st.text_input(
-        "Password", type="password", on_change=password_entered, key="password"
+        "Passwort", type="password", on_change=password_entered, key="password"
     )
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
