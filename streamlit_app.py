@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import boto3
+import botocore
 from boto3.dynamodb.conditions import Key
 import decimal
 import uuid
 import hmac
 import base64
+import io
 from io import BytesIO
 from PIL import Image
 
@@ -46,25 +48,36 @@ def mark_as_purchased(item_id, buyer_name, message):
         }
     )
 
+def compress_image(image, quality=85):
+    img = Image.open(image)
+    img_io = io.BytesIO()
+    img.save(img_io, format='JPEG', quality=quality, optimize=True)
+    img_io.seek(0)
+    return img_io
+
 def add_product(item_name, price, image):
-    '''Adds a new product to DynamoDB with image data.'''
+    '''Adds a new product to DynamoDB with compressed image data.'''
     item_id = str(uuid.uuid4())
     price_decimal = decimal.Decimal(str(price))
     
-    # Convert image to base64
-    buffered = BytesIO()
-    Image.open(image).save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
+    # Compress and convert image to base64
+    compressed_image = compress_image(image)
+    img_str = base64.b64encode(compressed_image.getvalue()).decode()
 
-    table.put_item(
-        Item={
-            'id': item_id,
-            'item_name': item_name,
-            'price': price_decimal,
-            'image_data': img_str,
-            'purchased': False
-        }
-    )
+    try:
+        table.put_item(
+            Item={
+                'id': item_id,
+                'item_name': item_name,
+                'price': price_decimal,
+                'image_data': img_str,
+                'purchased': False
+            }
+        )
+    except botocore.exceptions.ClientError as e:
+        st.error(f"An error occurred: {str(e)}")
+        return False
+    return True
 
 def update_product(item_id, item_name, price, image=None):
     '''Updates an existing product in DynamoDB.'''
@@ -75,17 +88,21 @@ def update_product(item_id, item_name, price, image=None):
     }
 
     if image:
-        buffered = BytesIO()
-        Image.open(image).save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
+        compressed_image = compress_image(image)
+        img_str = base64.b64encode(compressed_image.getvalue()).decode()
         update_expression += ', image_data = :image'
         expression_attribute_values[':image'] = img_str
 
-    table.update_item(
-        Key={'id': item_id},
-        UpdateExpression=update_expression,
-        ExpressionAttributeValues=expression_attribute_values
-    )
+    try:
+        table.update_item(
+            Key={'id': item_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+    except botocore.exceptions.ClientError as e:
+        st.error(f"An error occurred: {str(e)}")
+        return False
+    return True
 
 def admin_panel():
     '''Displays the admin panel for managing products.'''
@@ -98,25 +115,14 @@ def admin_panel():
 
     if st.button('Add Product'):
         if item_name and price and image:
-            add_product(item_name, price, image)
-            st.success('Product added successfully!')
+            if add_product(item_name, price, image):
+                st.success('Product added successfully!')
+            else:
+                st.error('Failed to add product. Please try again.')
         else:
             st.error('Please fill in all fields and upload an image.')
 
-    st.header('Existing Products')
-    df = load_data()
-    
-    st.subheader('Purchased Items')
-    purchased_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
-    if purchased_df.empty:
-        st.write("No items have been purchased yet.")
-    else:
-        for _, row in purchased_df.iterrows():
-            st.write(f"Item: {row['item_name']}")
-            st.write(f"Price: €{row['price']}")
-            st.write(f"Bought by: {row.get('buyer_name', 'Unknown')}")
-            st.write(f"Message: {row.get('buyer_message', 'No message')}")
-            st.write("---")
+    # ... rest of the admin_panel function ...
 
     st.subheader('Available Items')
     available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
@@ -130,9 +136,11 @@ def admin_panel():
                 new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
                 
                 if st.button('Update Product', key=f"update_{row['id']}"):
-                    update_product(row['id'], new_name, new_price, new_image)
-                    st.success('Product updated successfully!')
-                    st.rerun()
+                    if update_product(row['id'], new_name, new_price, new_image):
+                        st.success('Product updated successfully!')
+                        st.rerun()
+                    else:
+                        st.error('Failed to update product. Please try again.')
 
 def shop_page():
     '''Displays the shopping page.'''
@@ -182,7 +190,7 @@ def shop_page():
                         image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                         st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
 
-    st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
+    st.subheader(":rainbow-background[Geschenketisch]", divider='rainbow')
     available_items = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
     if available_items.empty:
         st.write("Der Geschenketisch mit Ideen ist gerade leer!")
