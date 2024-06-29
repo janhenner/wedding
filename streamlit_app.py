@@ -100,7 +100,7 @@ st.markdown(background_image, unsafe_allow_html=True)
 
 def shop_page():
     '''Displays the shopping page.'''
-    st.image('/static/paja.png', width=400)
+    st.image('paja.png', width=400)
 
     df = load_data()
 
