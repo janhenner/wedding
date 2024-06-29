@@ -148,15 +148,14 @@ def check_password(password_key):
 
 st.title('💒 Hochzeitsgeschenke Vorjohann', anchor=False)
 
-# Check general password for access
-if not check_password("password"):
-    st.stop()  # Do not continue if check_password is not True.
-
-# Routing workaround
-if 'secretadmin' in st.query_params:
+# Check if 'secretadmin' parameter is in query params
+if 'secretadmin' in st.query_params():
     # Check admin password for admin panel access
     if not check_password("password_admin"):
         st.stop()
     admin_panel()
 else:
+    # Check general password for access
+    if not check_password("password"):
+        st.stop()
     shop_page()
