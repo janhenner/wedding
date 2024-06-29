@@ -7,7 +7,6 @@ import decimal
 import uuid
 import hmac
 import base64
-import io
 from io import BytesIO
 from PIL import Image
 
@@ -48,21 +47,23 @@ def mark_as_purchased(item_id, buyer_name, message):
         }
     )
 
-def compress_image(image, quality=85):
-    img = Image.open(image)
-    img_io = io.BytesIO()
-    img.save(img_io, format='JPEG', quality=quality, optimize=True)
-    img_io.seek(0)
-    return img_io
+def check_image_size(image, max_size_mb=1):
+    """Check if the image size is within the limit."""
+    max_size_bytes = max_size_mb * 1024 * 1024  # Convert MB to bytes
+    return image.size <= max_size_bytes
 
 def add_product(item_name, price, image):
-    '''Adds a new product to DynamoDB with compressed image data.'''
+    '''Adds a new product to DynamoDB with image data.'''
     item_id = str(uuid.uuid4())
     price_decimal = decimal.Decimal(str(price))
     
-    # Compress and convert image to base64
-    compressed_image = compress_image(image)
-    img_str = base64.b64encode(compressed_image.getvalue()).decode()
+    # Check image size
+    if not check_image_size(image):
+        st.error(f"Image size exceeds the limit of 1MB. Please upload a smaller image.")
+        return False
+
+    # Convert image to base64 without compression
+    img_str = base64.b64encode(image.read()).decode()
 
     try:
         table.put_item(
@@ -88,8 +89,12 @@ def update_product(item_id, item_name, price, image=None):
     }
 
     if image:
-        compressed_image = compress_image(image)
-        img_str = base64.b64encode(compressed_image.getvalue()).decode()
+        # Check image size
+        if not check_image_size(image):
+            st.error(f"Image size exceeds the limit of 1MB. Please upload a smaller image.")
+            return False
+
+        img_str = base64.b64encode(image.read()).decode()
         update_expression += ', image_data = :image'
         expression_attribute_values[':image'] = img_str
 
@@ -122,9 +127,8 @@ def admin_panel():
         else:
             st.error('Please fill in all fields and upload an image.')
 
-    # ... rest of the admin_panel function ...
-
     st.subheader('Available Items')
+    df = load_data()
     available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
     if available_df.empty:
         st.write("No available items.")
