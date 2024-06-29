@@ -103,9 +103,13 @@ def shop_page():
 
     df = load_data()
 
+    @st.experimental_dialog("Überweisung")
+    def info_ueberweisung():
+        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+
     for index, row in df.iterrows():
         if row['purchased']:
-            st.write(":grey-background[already purchased:]")
+            st.subheader(":grey-background[Schon geschenkt:]", divider='blue')
             st.image(
                 row['image_path'],
                 width=250,
@@ -113,6 +117,7 @@ def shop_page():
             )
 
         else:
+            st.subheader(":grey-background[Geschenketisch:]", divider='rainbow')
             with st.container(border=True):
                 st.image(
                     row['image_path'],
@@ -122,11 +127,9 @@ def shop_page():
                 with st.popover('Buy this item for Pauline and Jan'):
                     name = st.text_input("Magst Du ergänzen wer Du bist?")
                     message = st.text_area("Möchtest Du eine Nachricht hinzufügen?")
-                    if st.button(f"Buy {row['item_name']} for €{row['price']}", key=row['id'], type='primary'):
+                    if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
+
                         mark_as_purchased(row['id'])
-                        @st.experimental_dialog("Überweisung")
-                        def info_ueberweisung():
-                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
                         info_ueberweisung()
                         st.rerun()
 
