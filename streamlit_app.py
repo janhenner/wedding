@@ -3,9 +3,11 @@ import pandas as pd
 import boto3
 from boto3.dynamodb.conditions import Key
 import decimal
-from pathlib import Path
-import uuid  # For generating unique IDs for new items
+import uuid
 import hmac
+import base64
+from io import BytesIO
+from PIL import Image
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -44,39 +46,46 @@ def mark_as_purchased(item_id, buyer_name, message):
         }
     )
 
-def add_product(item_name, price, image_path):
-    '''Adds a new product to DynamoDB.'''
-    item_id = str(uuid.uuid4())  # Generate a unique ID
-    # Convert price to the correct DynamoDB numeric format (Decimal)
+def add_product(item_name, price, image):
+    '''Adds a new product to DynamoDB with image data.'''
+    item_id = str(uuid.uuid4())
     price_decimal = decimal.Decimal(str(price))
-    # Convert image_path to string if it's a Path object
-    if isinstance(image_path, Path):
-        image_path = str(image_path)
+    
+    # Convert image to base64
+    buffered = BytesIO()
+    Image.open(image).save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
 
     table.put_item(
         Item={
             'id': item_id,
             'item_name': item_name,
             'price': price_decimal,
-            'image_path': image_path,
+            'image_data': img_str,
             'purchased': False
         }
     )
 
-def update_product(item_id, item_name, price, image_path):
+def update_product(item_id, item_name, price, image=None):
     '''Updates an existing product in DynamoDB.'''
-    update_expression = 'SET item_name = :name, price = :price, image_path = :path'
+    update_expression = 'SET item_name = :name, price = :price'
     expression_attribute_values = {
         ':name': item_name,
-        ':price': decimal.Decimal(str(price)),
-        ':path': str(image_path)
+        ':price': decimal.Decimal(str(price))
     }
+
+    if image:
+        buffered = BytesIO()
+        Image.open(image).save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        update_expression += ', image_data = :image'
+        expression_attribute_values[':image'] = img_str
+
     table.update_item(
         Key={'id': item_id},
         UpdateExpression=update_expression,
         ExpressionAttributeValues=expression_attribute_values
     )
-
 
 def admin_panel():
     '''Displays the admin panel for managing products.'''
@@ -89,14 +98,7 @@ def admin_panel():
 
     if st.button('Add Product'):
         if item_name and price and image:
-            images_dir = Path('images')
-            if not images_dir.exists():
-                images_dir.mkdir(parents=True)
-
-            image_path = images_dir / image.name
-            with open(image_path, 'wb') as f:
-                f.write(image.getbuffer())
-            add_product(item_name, price, str(image_path))
+            add_product(item_name, price, image)
             st.success('Product added successfully!')
         else:
             st.error('Please fill in all fields and upload an image.')
@@ -122,13 +124,7 @@ def admin_panel():
             new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
             
             if st.button('Update Product', key=f"update_{row['id']}"):
-                image_path = row['image_path']
-                if new_image:
-                    images_dir = Path('images')
-                    image_path = images_dir / new_image.name
-                    with open(image_path, 'wb') as f:
-                        f.write(new_image.getbuffer())
-                update_product(row['id'], new_name, new_price, image_path)
+                update_product(row['id'], new_name, new_price, new_image)
                 st.success('Product updated successfully!')
                 st.rerun()
 
@@ -136,7 +132,7 @@ background_image = """
 <style>
 [data-testid="stAppViewContainer"] > .main {
     background-image: url("paja.png");
-    background-size: 100vw 100vh;  # This sets the size to cover 100% of the viewport width and height
+    background-size: 100vw 100vh;
     background-position: center;
     background-repeat: no-repeat;
 }
@@ -152,36 +148,27 @@ def shop_page():
 
     st.subheader("Schon geschenkt", divider='blue')
     purchased_items = df[df['purchased'] == True]
-    columns = st.columns(3)
-    for index, row in purchased_items.iterrows():
-        with columns[index % 3]:
-            st.image(
-                row['image_path'],
-                width=200,
-                caption=f"{row['item_name']} (€{row['price']})"
-            )
+    cols = st.columns(3)
+    for i, (_, row) in enumerate(purchased_items.iterrows()):
+        with cols[i % 3]:
+            image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+            st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
     
     if len(purchased_items) > 6:
         if st.button("Show more purchased items"):
-            for index, row in purchased_items[6:].iterrows():
-                with columns[index % 3]:
-                    st.image(
-                        row['image_path'],
-                        width=200,
-                        caption=f"{row['item_name']} (€{row['price']})"
-                    )
+            for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
+                with cols[i % 3]:
+                    image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                    st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
 
     st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
     available_items = df[df['purchased'] == False]
-    columns = st.columns(3)
-    for index, row in available_items.iterrows():
-        with columns[index % 3]:
+    cols = st.columns(3)
+    for i, (_, row) in enumerate(available_items.iterrows()):
+        with cols[i % 3]:
             with st.container(border=True):
-                st.image(
-                    row['image_path'],
-                    caption=row['item_name'],
-                    use_column_width=True
-                )
+                image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                st.image(image, caption=row['item_name'], use_column_width=True)
                 with st.popover('Buy this item for Pauline and Jan'):
                     name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
                     message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
@@ -190,7 +177,8 @@ def shop_page():
                         st.success("Item purchased successfully!")
                         st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
                         st.code(f"DE123", language="text")
-                        st.rerun()
+                        if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
+                            st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
