@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import boto3
 from boto3.dynamodb.conditions import Key
+from decimal import Decimal
 from pathlib import Path
 import uuid  # For generating unique IDs for new items
 import hmac
@@ -41,11 +42,17 @@ def mark_as_purchased(item_id):
 def add_product(item_name, price, image_path):
     '''Adds a new product to DynamoDB.'''
     item_id = str(uuid.uuid4())  # Generate a unique ID
+    # Convert price to the correct DynamoDB numeric format (Decimal)
+    price_decimal = decimal.Decimal(str(price))
+    # Convert image_path to string if it's a Path object
+    if isinstance(image_path, Path):
+        image_path = str(image_path)
+
     table.put_item(
         Item={
             'id': item_id,
             'item_name': item_name,
-            'price': price,
+            'price': price_decimal,
             'image_path': image_path,
             'purchased': False
         }
