@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import boto3
 from boto3.dynamodb.conditions import Key
-from decimal import Decimal
+import decimal
 from pathlib import Path
 import uuid  # For generating unique IDs for new items
 import hmac
