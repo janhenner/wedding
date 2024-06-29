@@ -107,26 +107,32 @@ def admin_panel():
     df = load_data()
     
     st.subheader('Purchased Items')
-    purchased_df = df[df['purchased'] == True]
-    for _, row in purchased_df.iterrows():
-        st.write(f"Item: {row['item_name']}")
-        st.write(f"Price: €{row['price']}")
-        st.write(f"Bought by: {row.get('buyer_name', 'Unknown')}")
-        st.write(f"Message: {row.get('buyer_message', 'No message')}")
-        st.write("---")
+    purchased_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
+    if purchased_df.empty:
+        st.write("No items have been purchased yet.")
+    else:
+        for _, row in purchased_df.iterrows():
+            st.write(f"Item: {row['item_name']}")
+            st.write(f"Price: €{row['price']}")
+            st.write(f"Bought by: {row.get('buyer_name', 'Unknown')}")
+            st.write(f"Message: {row.get('buyer_message', 'No message')}")
+            st.write("---")
 
     st.subheader('Available Items')
-    available_df = df[df['purchased'] == False]
-    for index, row in available_df.iterrows():
-        with st.expander(f"Edit {row['item_name']}"):
-            new_name = st.text_input('Item Name', value=row['item_name'], key=f"name_{row['id']}")
-            new_price = st.number_input('Price', value=float(row['price']), min_value=0.0, format="%.2f", key=f"price_{row['id']}")
-            new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
-            
-            if st.button('Update Product', key=f"update_{row['id']}"):
-                update_product(row['id'], new_name, new_price, new_image)
-                st.success('Product updated successfully!')
-                st.rerun()
+    available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
+    if available_df.empty:
+        st.write("No available items.")
+    else:
+        for index, row in available_df.iterrows():
+            with st.expander(f"Edit {row['item_name']}"):
+                new_name = st.text_input('Item Name', value=row['item_name'], key=f"name_{row['id']}")
+                new_price = st.number_input('Price', value=float(row['price']), min_value=0.0, format="%.2f", key=f"price_{row['id']}")
+                new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
+                
+                if st.button('Update Product', key=f"update_{row['id']}"):
+                    update_product(row['id'], new_name, new_price, new_image)
+                    st.success('Product updated successfully!')
+                    st.rerun()
 
 def shop_page():
     '''Displays the shopping page.'''
@@ -151,63 +157,60 @@ def shop_page():
     with logo_container:
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
-            st.markdown('<div class="logo-image"><img src="paja.png" alt="Logo"></div>', unsafe_allow_html=True)
+            st.image('paja.png', use_column_width=True)
 
     # Add some space after the logo
     st.markdown("<br>", unsafe_allow_html=True)
 
     df = load_data()
 
-    if df.empty:
-        st.info("Noch keine Einträge")
+    st.subheader("Schon geschenkt", divider='blue')
+    purchased_items = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
+    if purchased_items.empty:
+        st.write("Sei der erste, der ein Geschenk auswählt.")
     else:
-        st.subheader("Das wurde schon geschenkt", divider='blue')
-        purchased_items = df[df['purchased'] == True]
-        if purchased_items.empty:
-            st.write("Sei der erste, der ein Geschenk auswählt.")
-        else:
-            cols = st.columns(3)
-            for i, (_, row) in enumerate(purchased_items.iterrows()):
-                with cols[i % 3]:
-                    image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                    st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
-        
-            if len(purchased_items) > 6:
-                if st.button("Show more purchased items"):
-                    for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
-                        with cols[i % 3]:
-                            image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                            st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
-
-        st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
-        available_items = df[df['purchased'] == False]
-        if available_items.empty:
-            st.write("All items have been purchased. Thank you for your generosity!")
-        else:
-            cols = st.columns(3)
-            for i, (_, row) in enumerate(available_items.iterrows()):
-                with cols[i % 3]:
-                    with st.container(border=True):
+        cols = st.columns(3)
+        for i, (_, row) in enumerate(purchased_items.iterrows()):
+            with cols[i % 3]:
+                image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
+    
+        if len(purchased_items) > 6:
+            if st.button("Show more purchased items"):
+                for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
+                    with cols[i % 3]:
                         image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                        st.image(image, caption=row['item_name'], use_column_width=True)
-                        
-                        if f"purchased_{row['id']}" not in st.session_state:
+                        st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
+
+    st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
+    available_items = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
+    if available_items.empty:
+        st.write("Der Geschenketisch mit Ideen ist gerade leer!")
+    else:
+        cols = st.columns(3)
+        for i, (_, row) in enumerate(available_items.iterrows()):
+            with cols[i % 3]:
+                with st.container(border=True):
+                    image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                    st.image(image, caption=row['item_name'], use_column_width=True)
+                    
+                    if f"purchased_{row['id']}" not in st.session_state:
+                        st.session_state[f"purchased_{row['id']}"] = False
+                    
+                    if not st.session_state[f"purchased_{row['id']}"]:
+                        name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
+                        message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
+                        if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
+                            mark_as_purchased(row['id'], name, message)
+                            st.session_state[f"purchased_{row['id']}"] = True
+                            st.rerun()
+                    else:
+                        st.success("Item purchased successfully!")
+                        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+                        st.code(f"DE123", language="text")
+                        if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
                             st.session_state[f"purchased_{row['id']}"] = False
-                        
-                        if not st.session_state[f"purchased_{row['id']}"]:
-                            name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
-                            message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
-                            if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
-                                mark_as_purchased(row['id'], name, message)
-                                st.session_state[f"purchased_{row['id']}"] = True
-                                st.rerun()
-                        else:
-                            st.success("Item purchased successfully!")
-                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
-                            st.code(f"DE123", language="text")
-                            if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
-                                st.session_state[f"purchased_{row['id']}"] = False
-                                st.rerun()
+                            st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
