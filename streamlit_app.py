@@ -29,15 +29,19 @@ def load_data():
     '''Loads the wedding gifts data from DynamoDB.'''
     response = table.scan()
     data = response['Items']
-    df = pd.DataFrame(data, columns=['id', 'item_name', 'price', 'image_path', 'purchased'])
+    df = pd.DataFrame(data)
     return df
 
-def mark_as_purchased(item_id):
-    '''Marks an item as purchased in DynamoDB.'''
+def mark_as_purchased(item_id, buyer_name, message):
+    '''Marks an item as purchased in DynamoDB and adds buyer info.'''
     table.update_item(
         Key={'id': item_id},
-        UpdateExpression='SET purchased = :val1',
-        ExpressionAttributeValues={':val1': True}
+        UpdateExpression='SET purchased = :val1, buyer_name = :val2, buyer_message = :val3',
+        ExpressionAttributeValues={
+            ':val1': True,
+            ':val2': buyer_name,
+            ':val3': message
+        }
     )
 
 def add_product(item_name, price, image_path):
@@ -58,6 +62,21 @@ def add_product(item_name, price, image_path):
             'purchased': False
         }
     )
+
+def update_product(item_id, item_name, price, image_path):
+    '''Updates an existing product in DynamoDB.'''
+    update_expression = 'SET item_name = :name, price = :price, image_path = :path'
+    expression_attribute_values = {
+        ':name': item_name,
+        ':price': decimal.Decimal(str(price)),
+        ':path': str(image_path)
+    }
+    table.update_item(
+        Key={'id': item_id},
+        UpdateExpression=update_expression,
+        ExpressionAttributeValues=expression_attribute_values
+    )
+
 
 def admin_panel():
     '''Displays the admin panel for managing products.'''
@@ -84,7 +103,34 @@ def admin_panel():
 
     st.header('Existing Products')
     df = load_data()
-    st.write(df)
+    
+    st.subheader('Purchased Items')
+    purchased_df = df[df['purchased'] == True]
+    for _, row in purchased_df.iterrows():
+        st.write(f"Item: {row['item_name']}")
+        st.write(f"Price: €{row['price']}")
+        st.write(f"Bought by: {row.get('buyer_name', 'Unknown')}")
+        st.write(f"Message: {row.get('buyer_message', 'No message')}")
+        st.write("---")
+
+    st.subheader('Available Items')
+    available_df = df[df['purchased'] == False]
+    for index, row in available_df.iterrows():
+        with st.expander(f"Edit {row['item_name']}"):
+            new_name = st.text_input('Item Name', value=row['item_name'], key=f"name_{row['id']}")
+            new_price = st.number_input('Price', value=float(row['price']), min_value=0.0, format="%.2f", key=f"price_{row['id']}")
+            new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
+            
+            if st.button('Update Product', key=f"update_{row['id']}"):
+                image_path = row['image_path']
+                if new_image:
+                    images_dir = Path('images')
+                    image_path = images_dir / new_image.name
+                    with open(image_path, 'wb') as f:
+                        f.write(new_image.getbuffer())
+                update_product(row['id'], new_name, new_price, image_path)
+                st.success('Product updated successfully!')
+                st.rerun()
 
 background_image = """
 <style>
@@ -104,33 +150,32 @@ def shop_page():
 
     df = load_data()
 
-    col1, col2 = st.columns(2) 
-
-    @st.experimental_dialog("Überweisung")
-    def info_ueberweisung():
-        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
-
-    # Initialize flags to track whether sections have been shown
-    schon_geschenkt_shown = False
-    geschenketisch_shown = False
-
-    for index, row in df.iterrows():
-        if row['purchased']:
-            if not schon_geschenkt_shown:
-                st.subheader("Schon geschenkt", divider='blue')
-                schon_geschenkt_shown = True
-            
+    st.subheader("Schon geschenkt", divider='blue')
+    purchased_items = df[df['purchased'] == True]
+    columns = st.columns(3)
+    for index, row in purchased_items.iterrows():
+        with columns[index % 3]:
             st.image(
                 row['image_path'],
                 width=200,
                 caption=f"{row['item_name']} (€{row['price']})"
             )
+    
+    if len(purchased_items) > 6:
+        if st.button("Show more purchased items"):
+            for index, row in purchased_items[6:].iterrows():
+                with columns[index % 3]:
+                    st.image(
+                        row['image_path'],
+                        width=200,
+                        caption=f"{row['item_name']} (€{row['price']})"
+                    )
 
-        else:
-            if not geschenketisch_shown:
-                st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
-                geschenketisch_shown = True
-            
+    st.subheader(":grey-background[Geschenketisch]", divider='rainbow')
+    available_items = df[df['purchased'] == False]
+    columns = st.columns(3)
+    for index, row in available_items.iterrows():
+        with columns[index % 3]:
             with st.container(border=True):
                 st.image(
                     row['image_path'],
@@ -138,11 +183,13 @@ def shop_page():
                     use_column_width=True
                 )
                 with st.popover('Buy this item for Pauline and Jan'):
-                    name = st.text_input("Magst Du ergänzen wer Du bist?")
-                    message = st.text_area("Möchtest Du eine Nachricht hinzufügen?")
+                    name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
+                    message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
                     if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
-                        mark_as_purchased(row['id'])
-                        info_ueberweisung()
+                        mark_as_purchased(row['id'], name, message)
+                        st.success("Item purchased successfully!")
+                        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
+                        st.code(f"DE123", language="text")
                         st.rerun()
 
 def check_password(password_key):
