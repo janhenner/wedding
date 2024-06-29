@@ -212,17 +212,15 @@ def shop_page():
                     if not st.session_state[f"purchased_{row['id']}"]:
                         name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
                         message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
-                        if st.button(f"Buy {row['item_name']} for €{row['price']}", key=f"buy_button_{row['id']}", type='primary'):
+                        if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
                             mark_as_purchased(row['id'], name, message)
                             st.session_state[f"purchased_{row['id']}"] = True
-                            st.rerun()
-                    else:
-                        st.success("Item purchased successfully!")
-                        st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf `DE123`")
-                        st.code(f"DE123", language="text")
-                        if st.button("I've made the transfer", key=f"transfer_done_{row['id']}"):
-                            st.session_state[f"purchased_{row['id']}"] = False
-                            st.rerun()
+                            st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
+                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung")
+                            st.code(f"DE123", language="text")
+                            if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
+                                st.rerun()
+
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
