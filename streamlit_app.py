@@ -127,8 +127,18 @@ def admin_panel():
         else:
             st.error('Please fill in all fields and upload an image.')
 
-    st.subheader('Available Items')
     df = load_data()
+
+    st.subheader('Bought Items')
+    available_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
+    if available_df.empty:
+        st.write("No available items.")
+    else:
+        for index, row in available_df.iterrows():
+            st.write(f"Item Name: {row['item_name']}")
+            st.write(f"Price: ${row['price']:.2f}")
+
+    st.subheader('Available Items')
     available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
     if available_df.empty:
         st.write("No available items.")
