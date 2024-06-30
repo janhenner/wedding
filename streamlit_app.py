@@ -227,30 +227,6 @@ def shop_page():
 
     df = load_data()
 
-    st.subheader("Schon geschenkt", divider='blue')
-    purchased_items = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
-    if purchased_items.empty:
-        st.write("Sei der erste, der ein Geschenk auswählt.")
-    else:
-        cols = st.columns(5)
-        for i, (_, row) in enumerate(purchased_items.iterrows()):
-            with cols[i % 5]:
-                image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
-    
-        if len(purchased_items) > 6:
-            if st.button("Show more purchased items"):
-                for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
-                    with cols[i % 3]:
-                        image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                        st.image(
-                            image,
-                            width=200,
-                            caption=f"{row['item_name']} (€{row['price']})",
-                        )
-                        if 'description' in row:
-                            st.caption(row['description'])
-
     st.subheader(":rainbow-background[Geschenketisch]", divider='rainbow')
     available_items = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
     if available_items.empty:
@@ -280,6 +256,18 @@ def shop_page():
                                 if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
                                     mark_as_purchased(row['id'], name, message)
                                     show_purchase_confirmation(row['item_name'], row['price'])
+    st.subheader("Schon geschenkt", divider='blue')
+    purchased_items = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
+    if purchased_items.empty:
+        st.write("Sei der erste, der ein Geschenk auswählt.")
+    else:
+        cols = st.columns(5)
+        for i, (_, row) in enumerate(purchased_items.iterrows()):
+            with cols[i % 5]:
+                image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
+                st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
+                if 'description' in row:
+                    st.caption(row['description'])
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
