@@ -185,6 +185,7 @@ def admin_panel():
             with st.expander(f"Edit {row['item_name']}"):
                 new_name = st.text_input('Item Name', value=row['item_name'], key=f"name_{row['id']}")
                 new_price = st.number_input('Price', value=float(row['price']), min_value=0.0, format="%.2f", key=f"price_{row['id']}")
+                new_description = st.text_area('Description', value=row['description'], key=f"description_{row['id']}")
                 new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
                 
                 if st.button('Update Product', key=f"update_{row['id']}"):
@@ -237,7 +238,8 @@ def shop_page():
             with cols[i % 3]:
                 with st.container(border=True):
                     image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                    st.image(image, caption=row['item_name'], use_column_width=True)
+                    caption = f'{row['item_name']} ({row['price']}€)'
+                    st.image(image, caption=caption, use_column_width=True)
                     if 'description' in row:
                         st.write(row['description'])
                     
