@@ -166,12 +166,12 @@ def admin_panel():
     else:
         for index, row in bought_df.iterrows():
             st.write(f"Item Name: {row['item_name']}")
-            st.write(f"Price: ${row['price']:.2f}")
-            st.write(f"Buyer Name: ${row['buyer_name']}")
-            st.write(f"Buyer Message: ${row['buyer_message']}")
+            st.write(f"Price: EUR {row['price']:.2f}")
+            st.write(f"Buyer Name: {row['buyer_name']}")
+            st.write(f"Buyer Message: {row['buyer_message']}")
             if 'purchase_timestamp' in row:
-                purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
-                st.write(f"Purchased on: {purchase_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                #purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
+                st.write(f"Purchased on: {purchase_time}")
             else:
                 st.write("Purchase time: Not available")
 
