@@ -273,7 +273,7 @@ def shop_page():
                             message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
                             # Check if name is not empty
                             if not name.strip():
-                                if st.button(f"Bitte gib noch deinen Namen ein, bevor Du\n{row['item_name']} vom virtuellen Geschenketisch nimmst", key=f"buy_button_{row['id']}", type='primary', disabled=True):
+                                if st.button(f"Bitte gib noch deinen Namen ein, bevor Du\n\n{row['item_name']} vom virtuellen Geschenketisch nimmst", key=f"buy_button_{row['id']}", type='primary', disabled=True):
                                     pass
                             else:
                                 if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
