@@ -67,7 +67,7 @@ def mark_as_purchased(item_id, buyer_name, message):
     timestamp = datetime.now().isoformat()
     table.update_item(
         Key={'id': item_id},
-        UpdateExpression='SET purchased = :val1, buyer_name = :val2, buyer_message = :val3',
+        UpdateExpression='SET purchased = :val1, buyer_name = :val2, buyer_message = :val3, purchase_timestamp = :val4',
         ExpressionAttributeValues={
             ':val1': True,
             ':val2': buyer_name,
