@@ -272,15 +272,13 @@ def shop_page():
                             name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
                             message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
                             # Check if name is not empty
-                            if name.strip():
+                            if not name.strip():
+                                if st.button(f"Bitte gib noch deinen Namen ein, bevor Du {row['item_name']} vom virtuellen Geschenketisch nimmst", key=f"buy_button_{row['id']}", type='primary', disabled=True):
+                                    pass
+                            else:
                                 if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
                                     mark_as_purchased(row['id'], name, message)
                                     show_purchase_confirmation(row['item_name'], row['price'])
-                            else:
-                                #st.warning("Bitte gib deinen Namen ein, bevor du fortfährst.")
-                                st.button(f"Bitte gib noch deinen Namen ein, bevor Du {row['item_name']} vom virtuellen Geschenketisch nimmst", key=f"buy_button_{row['id']}", type='primary', disabled=True)
-
-
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
