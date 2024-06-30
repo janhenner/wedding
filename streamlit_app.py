@@ -29,10 +29,10 @@ dynamodb = boto3.resource(
 # Reference to the DynamoDB table
 table = dynamodb.Table(st.secrets["aws"]["dynamodb_table"])
 
-@st.experimental_dialog("Du hast das Geschenk vom Geschenketisch genommen")
+@st.experimental_dialog("Du hast das Geschenk vom Geschenketisch genommen", width='large')
 def show_purchase_confirmation(item_name, price):
     st.info("Das Geschenk ist jetzt entnommen. Es ist nicht mehr für andere verfügbar.")
-    st.success(f":rainbow-background[Überweise gern €{price} für {item_name} auf diese Bankverbindung:]")
+    st.success(f"Überweise gern €{price} für {item_name} auf diese Bankverbindung:")
     iban = st.secrets["iban"]
     st.code(
         f"{iban}\nJan Henner\nConsorsbank",
