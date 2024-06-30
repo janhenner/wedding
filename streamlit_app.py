@@ -42,7 +42,7 @@ def show_purchase_confirmation(item_name, price):
         st.session_state.purchase_done = True
         st.rerun()
 
-@st.cache_data(ttl='15s', show_spinner='Lade ...')
+@st.cache_data(ttl='5s', show_spinner='Lade ...')
 def load_data():
     '''Loads all wedding gifts data from DynamoDB, handling pagination.'''
     items = []
