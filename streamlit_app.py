@@ -42,6 +42,7 @@ def show_purchase_confirmation(item_name, price):
         st.session_state.purchase_done = True
         st.rerun()
 
+@st.cache_data(ttl='15s')
 def load_data():
     '''Loads all wedding gifts data from DynamoDB, handling pagination.'''
     items = []
@@ -277,7 +278,7 @@ def shop_page():
                                     show_purchase_confirmation(row['item_name'], row['price'])
                             else:
                                 #st.warning("Bitte gib deinen Namen ein, bevor du fortfährst.")
-                                st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary', disabled=True)
+                                st.button(f"Bitte gib noch deinen Namen ein, bevor Du {row['item_name']} vom virtuellen Geschenketisch nimmst", key=f"buy_button_{row['id']}", type='primary', disabled=True)
 
 
 
