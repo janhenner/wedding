@@ -263,8 +263,9 @@ def shop_page():
                                 st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
                                 with st.container(border=True):
                                     st.write(f":rainbow-background[Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung:]")
+                                iban = st.secrets["iban"]
                                 st.code(
-                                    f"{st.secrets["iban"]}<br>Jan Henner<br>Consorsbank",
+                                    f"{iban}<br>Jan Henner<br>Consorsbank",
                                     language="text"
                                 )
                                 if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
