@@ -230,7 +230,7 @@ def shop_page():
     st.subheader(":rainbow-background[Geschenketisch]", divider='rainbow')
     available_items = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
     if available_items.empty:
-        st.write("Der Geschenketisch mit Ideen ist gerade leer!")
+        st.info("Der Geschenketisch mit Ideen ist gerade leer!")
     else:
         cols = st.columns(3)
         for i, (_, row) in enumerate(available_items.iterrows()):
@@ -272,7 +272,7 @@ def shop_page():
                     # Ensure the description is a string
                     if not isinstance(description, str):
                         description = str(description)
-                    st.caption('Click for description', help=description)
+                    st.caption('Details öffnen:', help=description)
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
