@@ -9,6 +9,7 @@ import hmac
 import base64
 from io import BytesIO
 from PIL import Image
+from datetime import datetime
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -46,18 +47,19 @@ def load_data():
             break
     
     df = pd.DataFrame(items)
-    st.write(f"Total items loaded from DynamoDB: {len(df)}")
     return df
 
 def mark_as_purchased(item_id, buyer_name, message):
     '''Marks an item as purchased in DynamoDB and adds buyer info.'''
+    timestamp = datetime.now().isoformat()
     table.update_item(
         Key={'id': item_id},
         UpdateExpression='SET purchased = :val1, buyer_name = :val2, buyer_message = :val3',
         ExpressionAttributeValues={
             ':val1': True,
             ':val2': buyer_name,
-            ':val3': message
+            ':val3': message,
+            ':val4': timestamp
         }
     )
 
@@ -66,17 +68,15 @@ def check_image_size(image, max_size_mb=1):
     max_size_bytes = max_size_mb * 1024 * 1024  # Convert MB to bytes
     return image.size <= max_size_bytes
 
-def add_product(item_name, price, image):
-    '''Adds a new product to DynamoDB with image data.'''
+def add_product(item_name, price, image, description):
+    '''Adds a new product to DynamoDB with image data and description.'''
     item_id = str(uuid.uuid4())
     price_decimal = decimal.Decimal(str(price))
     
-    # Check image size
     if not check_image_size(image):
-        st.error(f"Image size exceeds the limit of 1MB. Please upload a smaller image.")
+        st.error(f"Image size exceeds the limit. Please upload a smaller image.")
         return False
 
-    # Convert image to base64 without compression
     img_str = base64.b64encode(image.read()).decode()
 
     try:
@@ -86,6 +86,7 @@ def add_product(item_name, price, image):
                 'item_name': item_name,
                 'price': price_decimal,
                 'image_data': img_str,
+                'description': description,
                 'purchased': False
             }
         )
@@ -94,16 +95,16 @@ def add_product(item_name, price, image):
         return False
     return True
 
-def update_product(item_id, item_name, price, image=None):
+def update_product(item_id, item_name, price, description, image=None):
     '''Updates an existing product in DynamoDB.'''
-    update_expression = 'SET item_name = :name, price = :price'
+    update_expression = 'SET item_name = :name, price = :price, description = :desc'
     expression_attribute_values = {
         ':name': item_name,
-        ':price': decimal.Decimal(str(price))
+        ':price': decimal.Decimal(str(price)),
+        ':desc': description
     }
 
     if image:
-        # Check image size
         if not check_image_size(image):
             st.error(f"Image size exceeds the limit of 1MB. Please upload a smaller image.")
             return False
@@ -130,11 +131,12 @@ def admin_panel():
     st.header('Add New Product')
     item_name = st.text_input('Item Name')
     price = st.number_input('Price', min_value=0.0, format="%.2f")
+    description = st.text_area('Description')
     image = st.file_uploader('Upload Image', type=['jpg', 'jpeg', 'png'])
 
     if st.button('Add Product'):
-        if item_name and price and image:
-            if add_product(item_name, price, image):
+        if item_name and price and description and image:
+            if add_product(item_name, price, image, description):
                 st.success('Product added successfully!')
             else:
                 st.error('Failed to add product. Please try again.')
@@ -142,10 +144,6 @@ def admin_panel():
             st.error('Please fill in all fields and upload an image.')
 
     df = load_data()
-
-    with st.expander('all data'):
-        df
-        st.write(df[df['purchased'] == True])
 
     st.subheader('Bought Items')
     bought_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
@@ -155,6 +153,13 @@ def admin_panel():
         for index, row in bought_df.iterrows():
             st.write(f"Item Name: {row['item_name']}")
             st.write(f"Price: ${row['price']:.2f}")
+            st.write(f"Buyer Name: ${row['buyer_name']}")
+            st.write(f"Buyer Message: ${row['buyer_message']}")
+            if 'purchase_timestamp' in row:
+                purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
+                st.write(f"Purchased on: {purchase_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                st.write("Purchase time: Not available")
 
     st.subheader('Available Items')
     available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
@@ -173,6 +178,9 @@ def admin_panel():
                         st.rerun()
                     else:
                         st.error('Failed to update product. Please try again.')
+
+        with st.expander('all data'):
+            df
 
 def shop_page():
     '''Displays the shopping page.'''
@@ -209,9 +217,9 @@ def shop_page():
     if purchased_items.empty:
         st.write("Sei der erste, der ein Geschenk auswählt.")
     else:
-        cols = st.columns(3)
+        cols = st.columns(5)
         for i, (_, row) in enumerate(purchased_items.iterrows()):
-            with cols[i % 3]:
+            with cols[i % 5]:
                 image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                 st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
     
@@ -220,7 +228,13 @@ def shop_page():
                 for i, (_, row) in enumerate(purchased_items[6:].iterrows()):
                     with cols[i % 3]:
                         image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                        st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
+                        st.image(
+                            image,
+                            width=200,
+                            caption=f"{row['item_name']} (€{row['price']})",
+                        )
+                        if 'description' in row:
+                            st.caption(row['description'])
 
     st.subheader(":rainbow-background[Geschenketisch]", divider='rainbow')
     available_items = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
@@ -233,22 +247,28 @@ def shop_page():
                 with st.container(border=True):
                     image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                     st.image(image, caption=row['item_name'], use_column_width=True)
+                    if 'description' in row:
+                        st.write(row['description'])
                     
                     if f"purchased_{row['id']}" not in st.session_state:
                         st.session_state[f"purchased_{row['id']}"] = False
                     
                     if not st.session_state[f"purchased_{row['id']}"]:
-                        name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
-                        message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
-                        if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
-                            mark_as_purchased(row['id'], name, message)
-                            st.session_state[f"purchased_{row['id']}"] = True
-                            st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
-                            st.write(f"Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung")
-                            st.code(f"DE123", language="text")
-                            if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
-                                st.rerun()
-
+                        with st.popover("Vom Geschenketisch nehmen"):
+                            name = st.text_input("Magst Du ergänzen wer Du bist?", key=f"name_{row['id']}")
+                            message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
+                            if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
+                                mark_as_purchased(row['id'], name, message)
+                                st.session_state[f"purchased_{row['id']}"] = True
+                                st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
+                                with st.container(border=True):
+                                    st.write(f":rainbow-background[Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung:]")
+                                st.code(
+                                    f"{st.secrets["iban"]}<br>Jan Henner<br>Consorsbank",
+                                    language="text"
+                                )
+                                if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
+                                    st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
