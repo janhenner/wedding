@@ -29,10 +29,24 @@ dynamodb = boto3.resource(
 table = dynamodb.Table(st.secrets["aws"]["dynamodb_table"])
 
 def load_data():
-    '''Loads the wedding gifts data from DynamoDB.'''
-    response = table.scan()
-    data = response['Items']
-    df = pd.DataFrame(data)
+    '''Loads all wedding gifts data from DynamoDB, handling pagination.'''
+    items = []
+    last_evaluated_key = None
+    
+    while True:
+        if last_evaluated_key:
+            response = table.scan(ExclusiveStartKey=last_evaluated_key)
+        else:
+            response = table.scan()
+        
+        items.extend(response['Items'])
+        
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        if not last_evaluated_key:
+            break
+    
+    df = pd.DataFrame(items)
+    st.write(f"Total items loaded from DynamoDB: {len(df)}")
     return df
 
 def mark_as_purchased(item_id, buyer_name, message):
@@ -189,8 +203,6 @@ def shop_page():
     st.markdown("<br>", unsafe_allow_html=True)
 
     df = load_data()
-    with st.expander('zeige alle Daten'):
-        st.write(df)
 
     st.subheader("Schon geschenkt", divider='blue')
     purchased_items = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
