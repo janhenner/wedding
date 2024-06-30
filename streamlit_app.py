@@ -189,7 +189,7 @@ def admin_panel():
                 new_image = st.file_uploader('Upload New Image', type=['jpg', 'jpeg', 'png'], key=f"image_{row['id']}")
                 
                 if st.button('Update Product', key=f"update_{row['id']}"):
-                    if update_product(row['id'], new_name, new_price, new_image):
+                    if update_product(row['id'], new_name, new_price, new_description, new_image):
                         st.success('Product updated successfully!')
                         st.rerun()
                     else:
