@@ -171,7 +171,7 @@ def admin_panel():
             st.write(f"Buyer Message: {row['buyer_message']}")
             if 'purchase_timestamp' in row:
                 #purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
-                st.write(f"Purchased on: {purchase_timestamp}")
+                st.write(f"Purchased on: {row['purchase_timestamp']}")
             else:
                 st.write("Purchase time: Not available")
 
