@@ -165,15 +165,16 @@ def admin_panel():
         st.write("No available items.")
     else:
         for index, row in bought_df.iterrows():
-            st.write(f"Item Name: {row['item_name']}")
-            st.write(f"Price: EUR {row['price']:.2f}")
-            st.write(f"Buyer Name: {row['buyer_name']}")
-            st.write(f"Buyer Message: {row['buyer_message']}")
-            if 'purchase_timestamp' in row:
-                #purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
-                st.write(f"Purchased on: {row['purchase_timestamp']}")
-            else:
-                st.write("Purchase time: Not available")
+            with st.expander(f"Open {row['item_name']}"):
+                st.write(f"Item Name: {row['item_name']}")
+                st.write(f"Price: EUR {row['price']:.2f}")
+                st.write(f"Buyer Name: {row['buyer_name']}")
+                st.write(f"Buyer Message: {row['buyer_message']}")
+                if 'purchase_timestamp' in row:
+                    #purchase_time = datetime.fromisoformat(row['purchase_timestamp'])
+                    st.write(f"Purchased on: {row['purchase_timestamp']}")
+                else:
+                    st.write("Purchase time: Not available")
 
     st.subheader('Available Items')
     available_df = df[df['purchased'] == False] if not df.empty else pd.DataFrame()
