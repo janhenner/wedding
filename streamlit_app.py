@@ -129,6 +129,10 @@ def admin_panel():
 
     df = load_data()
 
+    with st.expander('all data'):
+        df
+        st.write(df[df['purchased'] == True])
+
     st.subheader('Bought Items')
     bought_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
     if bought_df.empty:
