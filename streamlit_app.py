@@ -29,6 +29,19 @@ dynamodb = boto3.resource(
 # Reference to the DynamoDB table
 table = dynamodb.Table(st.secrets["aws"]["dynamodb_table"])
 
+@st.experimental_dialog("Geschenk erfolgreich reserviert")
+def show_purchase_confirmation(item_name, price):
+    st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
+    st.write(f":rainbow-background[Überweise gern €{price} für {item_name} auf diese Bankverbindung:]")
+    iban = st.secrets["iban"]
+    st.code(
+        f"{iban}\nJan Henner\nConsorsbank",
+        language="text"
+    )
+    if st.button("Danke, ich bin hier fertig"):
+        st.session_state.purchase_done = True
+        st.rerun()
+
 def load_data():
     '''Loads all wedding gifts data from DynamoDB, handling pagination.'''
     items = []
@@ -259,17 +272,18 @@ def shop_page():
                             message = st.text_area("Möchtest Du eine Nachricht hinzufügen?", key=f"message_{row['id']}")
                             if st.button(f"Jetzt {row['item_name']} für €{row['price']} vom virtuellen Geschenketisch nehmen", key=f"buy_button_{row['id']}", type='primary'):
                                 mark_as_purchased(row['id'], name, message)
-                                st.session_state[f"purchased_{row['id']}"] = True
-                                st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
-                                with st.container(border=True):
-                                    st.write(f":rainbow-background[Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung:]")
-                                iban = st.secrets["iban"]
-                                st.code(
-                                    f"{iban}<br>Jan Henner<br>Consorsbank",
-                                    language="text"
-                                )
-                                if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
-                                    st.rerun()
+                                show_purchase_confirmation(row['item_name'], row['price'])
+                                #st.session_state[f"purchased_{row['id']}"] = True
+                                #st.success("Das Geschenk ist jetzt entnommen und nicht mehr für andere verfügbar.")
+                                #with st.container(border=True):
+                                #    st.write(f":rainbow-background[Überweise gern €{row['price']} für {row['item_name']} auf diese Bankverbindung:]")
+                                #iban = st.secrets["iban"]
+                                #st.code(
+                                #    f"{iban}<br>Jan Henner<br>Consorsbank",
+                                #    language="text"
+                                #)
+                                #if st.button("Danke, ich bin hier fertig", key=f"transfer_done_{row['id']}"):
+                                #    st.rerun()
 
 def check_password(password_key):
     """Returns `True` if the user had the correct password."""
