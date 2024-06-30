@@ -268,10 +268,10 @@ def shop_page():
                 image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
                 st.image(image, width=200, caption=f"{row['item_name']} (€{row['price']})")
                 if 'description' in row:
+                    description = row['description']
                     # Ensure the description is a string
                     if not isinstance(description, str):
                         description = str(description)
-
                     st.caption('Click for description', help=description)
 
 def check_password(password_key):
