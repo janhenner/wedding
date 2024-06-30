@@ -238,7 +238,7 @@ def shop_page():
             with cols[i % 3]:
                 with st.container(border=True):
                     image = Image.open(BytesIO(base64.b64decode(row['image_data'])))
-                    caption = f'{row['item_name']} ({row['price']}€)'
+                    caption = f"{row['item_name']} ({row['price']}€)"
                     st.image(image, caption=caption, use_column_width=True)
                     if 'description' in row:
                         st.write(row['description'])
