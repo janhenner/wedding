@@ -130,11 +130,11 @@ def admin_panel():
     df = load_data()
 
     st.subheader('Bought Items')
-    available_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
-    if available_df.empty:
+    bought_df = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
+    if bought_df.empty:
         st.write("No available items.")
     else:
-        for index, row in available_df.iterrows():
+        for index, row in bought_df.iterrows():
             st.write(f"Item Name: {row['item_name']}")
             st.write(f"Price: ${row['price']:.2f}")
 
@@ -185,6 +185,8 @@ def shop_page():
     st.markdown("<br>", unsafe_allow_html=True)
 
     df = load_data()
+    with st.expander('zeige alle Daten'):
+        st.write(df)
 
     st.subheader("Schon geschenkt", divider='blue')
     purchased_items = df[df['purchased'] == True] if not df.empty else pd.DataFrame()
